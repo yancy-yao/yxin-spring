@@ -1,0 +1,16 @@
+注入方式：
+    构造方法注入
+    setter方法注入
+    接口注入
+
+IOC Service Provider的职责
+    1、业务对象的构建管理
+    2、业务对象间的依赖绑定
+
+spring容器：
+    BeanFactory：基础类型IOC容器，提供完整的IOC服务支持。默认采用延时初始化策略（lazy-load）。只有当客户
+端对象需要访问容器中的某个受管对象的时候，才对该受管对象进行初始化以及依赖注入操作。
+    ApplicationContext。在BeanFactory的基础上构建，是相对比较高级的容器实现。
+    TODO： BeanFactory 和ApplicationContext继承关系，源码。
+    DefaultListableBeanFactory! 实现了BeanFactory接口，还实现了BeanDefinitionRegistry.
+
