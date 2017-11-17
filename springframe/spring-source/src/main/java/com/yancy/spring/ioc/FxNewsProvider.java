@@ -10,6 +10,11 @@ public class FxNewsProvider {
     private IFxNewsListener newsListener;
     private IFxNewsPersister newsPersister;
 
+    public FxNewsProvider(IFxNewsListener newsListener, IFxNewsPersister newsPersister) {
+        this.newsListener = newsListener;
+        this.newsPersister = newsPersister;
+    }
+
     public void getAndPersistNews() {
         String[] newsIds = newsListener.getAvaliableNewsIds();
         if (ArrayUtils.isEmpty(newsIds)) {

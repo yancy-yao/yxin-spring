@@ -14,3 +14,10 @@ spring容器：
     TODO： BeanFactory 和ApplicationContext继承关系，源码。
     DefaultListableBeanFactory! 实现了BeanFactory接口，还实现了BeanDefinitionRegistry.
 
+FactoryBean
+TODO BeanFactory和FactoryBean区别
+
+Spring提供BeanFactoryPostProcessor的容器扩展机制。该机制允许我们在容器实例化相对应对象之前，对注册到
+容器的BeanDefinition所保存的信息做相应的修改。
+
+bean生命周期
