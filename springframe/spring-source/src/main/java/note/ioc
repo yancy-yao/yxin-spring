@@ -21,3 +21,33 @@ Spring提供BeanFactoryPostProcessor的容器扩展机制。该机制允许我�
 容器的BeanDefinition所保存的信息做相应的修改。
 
 bean生命周期
+
+ApplicationContext
+    interface                      interface
+    Resource                      ResourceLoader
+                                                    interface
+                    DefaultResourceLoader          ResourcePatternResolver
+
+                    FileSystemResourceLoader     PathMatchingResourcePatternResolver
+
+        Resource和ResourceLoader类层次图
+
+    ApplicationContext与ResourceLoader
+        ApplicationContext继承ResourcePatternResolver。
+
+@Autowired
+    BeanPostProcessor自定义，AutowiredAnnotationBeanPostProcessor
+@Qualifier
+    按照类型进行匹配。实际上是byName自动绑定的注解版。
+@Resource
+
+@PostConstruct和@PreDestroy不是服务于依赖注入，主要用于标注对象生命周期管理相关方法，这与Spring的InitializingBean
+和DisposableBean接口，以及配置项中的init-method和destroy-method起到类似的作用。
+    CommonAnnotationBeanPostProcessor
+
+<context:annotation-config>配置BeanPostProcessor（AutowiredAnnotationBeanPostProcessor、CommonAnnotationBeanPost
+Processor、PersistenceAnnotationBeanPostProcessor、RequiredAnnotationBeanPostProcessor）到容器。
+
+<context:component-scan>
+    classpath-scanning功能可以从某一顶层包开始扫描。当扫描到某个类标注了相应的注解之后，就会提取该类的相关信息，构建
+对应的BeanDefinition，然后构建完的BeanDefinition注册到容器。

@@ -1,0 +1,147 @@
+org.springframework.transaction.PlatformTransactionManager是Spring事务抽象架构的核心接口，它的主要作用是为应用程序提供
+事务界定的统一方式。
+public interface PlatformTransactionManager {
+    TransactionStatus getTransaction(TransactionDefinition var1) throws TransactionException;
+
+    void commit(TransactionStatus var1) throws TransactionException;
+
+    void rollback(TransactionStatus var1) throws TransactionException;
+}
+具体实施由相应的PlatformTransactionManager实现类执行。
+
+JDBC的局部事务控制是由同一个java.sql.Connection来完成，所以要保证两个DAO的数据访问方法处于一个事务中，我们就得保证他们
+使用的是同一个java.sql.Connection。要做到这一点，通常会采用称为connection-passing的方式，即为同一个事务中的各个DAO的数
+据访问方法传递当前事务对应的同一个java.sql.Connection。
+
+事务开始之前获得一个java.sql.Connection，然后将这个Connection绑定到当前的调用线程。之后，数据访问对象在使用Connection进
+行数据访问的时候，就可以从当前线程上获得这个事务开始的时候绑定的Connection实例。当所有的数据访问对象全部使用这个绑定到
+当前线程的Connection完成了数据访问工作时，我们就使用这个Connection实例提交或者回滚事务，然后解除它到当前线程的绑定。
+
+Spring的事务抽象包括3个主要接口:
+    PlatformTransactionManager、TransactionDefinition、TransactionStatus。
+    PlatformTransactionManager：负责界定事务边界。
+    TransactionDefinition：负责定义事务相关属性，包括隔离级别、传播行为等。
+    TransactionStatus：事务开启之后到事务结束期间的事务状态控制。
+
+TransactionDefinition
+    传播行为：
+        PROPAGATION_REQUIRED。如果当前存在一个事务，则加入当前事务。如果不存在任何事务，则创建一个新的事务。总之，要至少
+保证在一个事务中运行。 默认的事务传播行为。
+        PROPAGATION_SUPPORTS。如果当前存在一个事务，则加入当前事务。如果当前不存在事务，则直接执行。对于一些查询方法来说
+PROPAGATION_SUPPORTS通常是比较合适的传播行为选择。如果当前方法直接执行，那么不需要事务的支持。如果当前方法被其他方法调用
+，而其他方法启动了一个事务，PROPAGATION_SUPPORTS可以保证当前方法能够加入当前事务，并洞察当前事务对数据资源所做的更新。比
+如，A.service()会首先更新数据库，然后调用B.service()进行查询，那么如果B.service()是PROPAGATION_SUPPORTS的传播行为，就可
+以读取A.service()之前所做的最新更新结果。而如果使用PROPAGATION_NOT_SUPPORTED，则无法读取最新的更新结果。
+        PROPAGATION_MANDATORY。强制要求当前存在一个事务，如果不存在，则抛出异常。如果某个方法需要事务支持，但自身又不管
+理事务提交或者回滚，那么比较适合用PROPAGATION_MANDATORY。
+        PROPAGATION_REQUIRES_NEW。不管当前是否存在事务，都会创建新的事务。如果当前存在事务，会将当前事务挂起。如果某个业
+务对象所做的事情不想影响到外层事务，则选择PROPAGATION_REQUIRES_NEW。比如，日志更新。
+        PROPAGATION_NOT_SUPPORTED。不支持当前事务，而是在没有事务的情况下执行。如果当前存在事务的话，当前事务原则上会被
+挂起，当着要看对应的PlatformTransactionManager实现类是否支持事务的挂起。
+        PROPAGATION_NEVER。永远不需要当前存在事务，如果存在事务，则跑出异常。
+        PROPAGATION_NESTED。如果存在当前事务，则在当前事务的一个嵌套事务中执行，否则与PROPAGATION_REQUIRES_NEW行为类似，
+则创建新的事务。
+
+    相关实现：
+        编程式事务
+            DefaultTransactionDefinition是TransactionDefinition默认实现。TransactionTemplate是Spring提供的进行编程式事务
+的模板方法类。
+        声明式事务
+            TransactionAttribute是继承TransactionDefinition的接口定义，主要面向使用Spring AOP进行声明式事务管理的场合。
+默认实现为DefaultTransactionAttribute。
+
+TransactionStatus
+    使用TransactionStatus提供的相应方法查询事务状态。
+    通过setRollbackOnly()方法标记当前事务以使其回滚。
+    如果相应的PlatformTransactionManager支持Savepoint，可以通过TransactionStatus在当前事务中创建内部嵌套事务。
+
+PlatformTransactionManager
+    事务抽象框架的核心组件。实现类可以划分为面向局部事务和面向全局事务。
+
+    面向局部事务：
+    数据访问技术与PlatformTransactionManager实现类对应关系：
+        JDBC/iBATIS                     DataSourceTransactionManager
+        Hibernate                       HibernateTransactionManager
+        JDO                             JdoTransactionManager
+        JPA                             JpaTransactionManager
+        TopLink                         TopLinkTransactionManager
+        JMS                             JmsTransactionManager
+        JCA Local Transaction           CciLocalTransactionManager
+
+    面向全局事务：
+    JtaTransactionManager。
+
+    概念：
+        transaction object。承载了当前事务的必要信息。PlatformTransactionManager实现类可以根据transaction object所提供的
+信息来决定当前事务。
+        TransactionSynchronization。可以注册到事务处理过程中的回调接口。
+        TransactionSynchronizationManager。管理TransactionSynchronization、当前事务状态以及具体的事务资源。
+
+声明式事务
+    1.使用ProxyFactory + TransactionInterceptor
+        <bean id="dataSource" class="">
+        </bean>
+
+        <bean id="jdbcTemplate" class="">
+            <property name="dataSource" ref="dataSource"/>
+        </bean>
+
+        <bean id="transactionManager" class = "org.springframework.jdbc.datasource.DataSourceTransactionManager">
+            <property name="dataSource" ref="dataSource">
+        </bean>
+
+        <bean id="transactionInterceptor" class="org.springframework.transaction.interceptor.TransactionInterceptor">
+            <property name="transactionManager" ref="transactionManager"/>
+            <property name="transactionAttributes">
+                <props>
+                    <prop key=""> PROPAGATION_REQUIRED</prop>
+                </props>
+            </property>
+        </bean>
+
+        事务要管理的具体数据资源类型，采用的数据访问技术，特定的书屋管理器，transactionInterceptor提供的业务方法拦截功能
+
+    2.TransactionProxyFactoryBean
+        将TransactionInterceptor纳入自身进行管理。
+         <bean id="txProxyFactoryBean" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean"
+         abstract="true">
+            <property name="proxyInterfaces" value="...IQuoteService"/>
+            <property name="transactionManager" value="transactionManager"/>
+            <property name="transactionAttributes">
+                <prop key=""> PROPAGATION_REQUIRED</prop>
+            </property>
+          </bean>
+
+          <bean id="quoteService" parent="txProxyFactoryBean">
+            <property name="target" ref="quoteServiceTarget"/>
+          </bean>
+
+    3.BeanNameAutoProxyCreator
+        <bean id="autoProxyCreator" class="" >
+            <property name="interceptorNames">
+                <list>
+                    <value>transactionInterceptor</value>
+                </list>
+            </property>
+            <property name="beanNames">
+                <list>
+                    <idref bean="quoteService"/>
+                </list>
+            </property>
+        </bean>
+
+    4.XML声明事务配置
+        <aop:config>
+            <aop:point id="txServices" expression="execution(*cn..*(..))"/>
+            <aop:advisor pointcut-def="txServices" advice-ref="txAdvice"/>
+        </aop:config>
+
+        <tx:advice id="txAdvices" transaction-manager="transactionManager">
+            <tx:attributes>
+                <tx:method name="getQuate" propagation="SUPPORTS"/>
+            </tx:attributes>
+        </tx:advice>
+
+     注解方式：
+        @Transactional
+            <tx:annotation-driven transaction-manager="transactionManager"/>
